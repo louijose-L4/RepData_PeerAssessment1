@@ -1,0 +1,141 @@
+---
+title: "RPR"
+author: "Myself"
+date: "2024-03-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading and preprocessing the data
+
+### 1. Load the data (i.e. read.csv())
+
+```{r}
+rawdata <- unzip("activity.zip")
+activity <- read.csv(rawdata)
+
+head(activity)
+```
+
+### 2. Process/transform the data into a format suitable for your data analysis i.e converting string date character into date
+
+
+``` {r}
+activity$date <- as.Date(activity$date,format="%Y-%m-%d")
+head(activity)
+```
+## What is mean total number of steps taken per day?
+
+### 1.Total no.steps taken per day
+
+```{r}
+library(dplyr)
+
+total_steps_data <- activity %>%na.omit() %>% group_by(date) %>% summarize(total_steps=sum(steps))
+head(total_steps_data)
+```
+### 2. Histogram for total number steps taken per day
+``` {r}
+with(total_steps_data,hist(total_steps,breaks=20,xlab='year',ylab='total steps',main="Total no.of steps in a year",col='red'))
+
+```
+
+```{r}
+meansteps <- round(mean(total_steps_data$total_steps))
+mediansteps <- round(median(total_steps_data$total_steps))
+
+```
+The mean and median of the total number of steps in a year `r meansteps` and `r mediansteps`
+
+## What is the average daily activity pattern?
+
+### 1. Calculating the average number of steps/5 minute interval
+```{r}
+avg_steps_data <- activity %>% na.omit() %>% group_by(interval) %>% summarize(avg_steps=mean(steps))
+```
+### 2. Plotting a histogram for average steps for 5 minute interval
+
+```{r}
+with (avg_steps_data, plot(interval,avg_steps,type="l",xlab="Interval",ylab="Average steps taken",main="Average steps taken during 5 minute interval"))
+```
+
+### 3. Finding the 5 minute interval which has max no. of steps
+
+```{r}
+intervalWithMaxSteps <- avg_steps_data$interval[which.max(avg_steps_data$avg_steps)]
+intervalWithMaxSteps
+```
+
+## Imputing missing values
+
+### 1. Calculate and report the total number of missing values in the dataset
+
+```{r}
+
+missing_values <- colSums(is.na(activity))
+missing_values
+
+```
+### 2. Fixing the missing values by mean of steps
+```{r}
+imputed_data <- activity
+imputed_data$steps[is.na(imputed_data$steps)] <-  mean(imputed_data$steps,na.rm=T)
+missing_values <- colSums(is.na(imputed_data))
+missing_values
+```
+```{r}
+imputed_data$date <- as.Date(imputed_data$date,format="%Y-%m-%d")
+head(imputed_data)
+```
+
+```{r}
+total_steps_imputed <- imputed_data %>% group_by(date) %>% summarize(total_steps_imp=sum(steps))
+with(total_steps_imputed,hist(total_steps_imp,breaks=20,xlab="Total number of steps taken each day",ylab="Count",main="Total number of steps taken each day",col="blue"))
+```
+```{r}
+imputed_meansteps <- round(mean(total_steps_imputed$total_steps_imp))
+imputed_mediansteps <- round(median(total_steps_imputed$total_steps_imp))
+imputed_meansteps
+imputed_mediansteps
+```
+### Inference:
+#### The difference between means for raw data and imputed data is `r imputed_meansteps - meansteps `.
+
+#### The difference between medians for raw data and imputed data is `r imputed_mediansteps - mediansteps`.
+
+#### By imputing the 'NA' values with mean of steps in the raw data ,  the mean remained the same but the median has changed marginally by 1 and moved closer to the mean of the raw data.
+
+# Are there differences in activity patterns between weekdays and weekends?
+
+## 1.Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r}
+imputed_data$day <- weekdays(imputed_data$date)
+
+imputed_data$dayType <- "weekday"
+
+imputed_data$dayType[imputed_data$day %in% c("Saturday","Sunday")] <- "weekend"
+
+
+```
+
+```{r}
+weekData <- imputed_data %>% group_by(dayType,interval) %>% summarize(avg_day_steps=mean(steps))
+
+
+
+
+```
+## 2. Make a panel plot containing a time series plot for 5-minute interval (x-axis) and the average number of steps taken
+
+```{r}
+
+library(ggplot2)
+
+qplot(interval,avg_day_steps,data=weekData, geom="line",xlab="Interval",ylab="Number of steps (Average)", facets=dayType ~ .)
+
+```
+
+### Inference : The average steps is more in the weekdays as per the plot which may be related to people working in weekdays.
